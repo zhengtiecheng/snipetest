@@ -11,6 +11,10 @@
             'error'   => 'لم يتم إنشاء سند صيانة الأصل، الرجاء المحاولة مرة أخرى.',
             'success' => 'تم إنشاء سند صيانة الأصل بنجاح.'
         ],
+        'edit'                       => [
+            'error'   => 'Asset Maintenance was not created, please try again.',
+            'success' => 'Asset Maintenance created successfully.'
+        ],
         'asset_maintenance_incomplete' => 'لم يكتمل بعد',
         'warranty'                     => 'الضمان',
         'not_warranty'                 => 'لا يوجد ضمان',

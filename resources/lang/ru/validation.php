@@ -25,6 +25,7 @@ return array(
         "file"    => ":attribute должен быть между :min - :max килобайт.",
         "string"  => ":attribute должен быть между :min - :max символов.",
     ),
+    "boolean"          => ":attribute должен быть true или false.",
     "confirmed"        => "Подтверждение :attribute не совпадает.",
     "date"             => ":attribute неправильная дата.",
     "date_format"      => ":attribute не совпадает с форматом :format.",
@@ -34,6 +35,8 @@ return array(
     "email"            => "Неправильный формат :attribute.",
     "exists"           => "Выбранный :attribute неправильный.",
     "email_array"      => "Один или несколько адресов эл. почты являются недействительным.",
+    "hashed_pass"      => "Your current password is incorrect",
+    'dumbpwd'          => 'That password is too common.',
     "image"            => ":attribute должен быть изображением.",
     "in"               => "Выбранный :attribute неправильный.",
     "integer"          => ":attribute должно быть числом.",
@@ -64,8 +67,8 @@ return array(
     ),
     "unique"           => ":attribute уже занят.",
     "url"              => "Неправильный формат :attribute.",
-    "statuslabel_type" => "You must select a valid status label type",
-    "unique_undeleted" => "The :attribute must be unique.",
+    "statuslabel_type" => "Вы должны выбрать правильное название статуса",
+    "unique_undeleted" => "Свойство :attribute должно быть уникальным.",
 
 
     /*

@@ -11,6 +11,10 @@
             'error'   => 'Asset Maintenance was not created, please try again.',
             'success' => 'Asset Maintenance created successfully.'
         ],
+        'edit'                       => [
+            'error'   => 'Asset Maintenance was not created, please try again.',
+            'success' => 'Asset Maintenance created successfully.'
+        ],
         'asset_maintenance_incomplete' => 'Not Completed Yet',
         'warranty'                     => 'אחריות',
         'not_warranty'                 => 'ללא אחריות',

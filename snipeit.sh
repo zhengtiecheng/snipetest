@@ -111,8 +111,9 @@ function isinstalled {
 }
 
 if [ -f /etc/lsb-release ]; then
-	distro="$(lsb_release -s -i )"
-	version="$(lsb_release -s -r)"
+    distro="$(lsb_release -s -i )"
+    version="$(lsb_release -s -r)"
+    codename="$(lsb_release -c -s)"
 elif [ -f /etc/os-release ]; then
 	distro="$(. /etc/os-release && echo $ID)"
 	version="$(. /etc/os-release && echo $VERSION_ID)"
@@ -150,7 +151,7 @@ case $distro in
                 echo "  The installer has detected Debian version $version as the OS."
                 distro=debian
                 ;;
-        *centos*|*redhat*|*ol*)
+        *centos*|*redhat*|*ol*|*rhel*)
                 echo "  The installer has detected $distro version $version as the OS."
                 distro=centos
                 ;;
@@ -192,19 +193,17 @@ esac
 done
 
 #Snipe says we need a new 32bit key, so let's create one randomly and inject it into the file
-random32="$(< /dev/urandom tr -dc _A-Za-z-0-9 2>&1 | head -c32)"
+random32="$(echo `< /dev/urandom tr -dc _A-Za-z-0-9 | head -c32`)"
 
 #db_setup.sql will be injected to the database during install.
 #Again, this file should be removed, which will be a prompt at the end of the script.
-dbsetup="$tmp/db_setup.sql"
-{
-  echo "CREATE DATABASE snipeit;"
-  echo "GRANT ALL PRIVILEGES ON snipeit.* TO snipeit@localhost IDENTIFIED BY '$mysqluserpw';"
-} >> "$dbsetup"
+dbsetup=$tmp/db_setup.sql
+echo >> $dbsetup "CREATE DATABASE snipeit;"
+echo >> $dbsetup "GRANT ALL PRIVILEGES ON snipeit.* TO snipeit@localhost IDENTIFIED BY '$mysqluserpw';"
 
 #Let us make it so only root can read the file. Again, this isn't best practice, so please remove these after the install.
-chown root:root "$dbsetup"
-chmod 700 "$dbsetup"
+chown root:root $dbsetup
+chmod 700 $dbsetup
 
 ## TODO: Progress tracker on each step
 
@@ -218,28 +217,27 @@ case $distro in
 
 		webdir=/var/www
 		echo -e "\n* Updating Debian packages in the background... ${spin[0]}\n"
-		log "apt-get update" & pid=$!
+		apt-get update >> /var/log/snipeit-install.log & pid=$! 2>&1
 		wait
-		log "apt-get upgrade" & pid=$!
+		apt-get upgrade >> /var/log/snipeit-install.log & pid=$! 2>&1
 		wait
 		echo -e "\n* Installing packages... ${spin[0]}\n"
 		echo -e "\n* Going to suppress more messages that you don't need to worry about. Please wait... ${spin[0]}"
-		log "DEBIAN_FRONTEND=noninteractive apt-get -y install mariadb-server mariadb-client apache2 git unzip php5 php5-mcrypt php5-curl php5-mysql php5-gd php5-ldap libapache2-mod-php5 curl" & pid=$!
+		DEBIAN_FRONTEND=noninteractive apt-get -y install mariadb-server mariadb-client apache2 git unzip php5 php5-mcrypt php5-curl php5-mysql php5-gd php5-ldap libapache2-mod-php5 curl >> /var/log/snipeit-install.log & pid=$! 2>&1
 		progress
 		wait
 		echo -e "\n* Cloning Snipeit, extracting to $webdir/$name..."
-		log "git clone https://github.com/snipe/snipe-it $webdir/$name" & pid=$!
+		git clone https://github.com/snipe/snipe-it $webdir/$name >> /var/log/snipeit-install.log & pid=$! 2>&1
 		progress
-		log "php5enmod mcrypt"
-		log "a2enmod rewrite"
+		php5enmod mcrypt >> /var/log/snipeit-install.log 2>&1
+		a2enmod rewrite >> /var/log/snipeit-install.log 2>&1
 		vhenvfile
 		wait
 		echo >> $hosts "127.0.0.1 $hostname $fqdn"
-		log "a2ensite $name.conf"
+		a2ensite $name.conf
 		echo -e "* Modify the Snipe-It files necessary for a production environment.\n* Securing Mysql"
 		# Have user set own root password when securing install
 		# and just set the snipeit database user at the beginning
-		service mysql status >/dev/null || service mysql start
 		/usr/bin/mysql_secure_installation
 		echo -e "* Creating Mysql Database and User.\n##  Please Input your MySQL/MariaDB root password: "
 		mysql -u root -p < $dbsetup
@@ -247,7 +245,6 @@ case $distro in
 		curl -sS https://getcomposer.org/installer | php
 		php composer.phar install --no-dev --prefer-source
 		perms
-		chown -R www-data:www-data "/var/www/$name"
 		service apache2 restart
 		;;
 	ubuntu)
@@ -257,27 +254,24 @@ case $distro in
 		#composer install, set permissions, restart apache.
 
 		webdir=/var/www
-		echo -ne "\n* Adding MariaDB repo in the background... ${spin[0]}"
-		(echo "deb [arch=amd64,i386] http://ftp.hosteurope.de/mirror/mariadb.org/repo/10.1/ubuntu $codename main" | tee /etc/apt/sources.list.d/mariadb.list >/dev/null 2>&1)
-		log "apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8"
 		echo -ne "\n* Updating with apt-get update in the background... ${spin[0]}"
-		log "apt-get update" & pid=$!
-		[ -f /var/lib/dpkg/lock ] && rm -f /var/lib/dpkg/lock
+		sudo apt-get update >> /var/log/snipeit-install.log & pid=$! 2>&1
+		rm /var/lib/dpkg/lock
 		progress
 		echo -ne "\n* Upgrading packages with apt-get upgrade in the background... ${spin[0]}"
-		log "apt-get -y upgrade" & pid=$!
+		sudo apt-get -y upgrade >> /var/log/snipeit-install.log & pid=$! 2>&1
 		progress
 		echo -ne "\n* Setting up LAMP in the background... ${spin[0]}\n"
-		log "DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server mariadb-client apache2 libapache2-mod-php curl" & pid=$!
+		sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lamp-server^ >> /var/log/snipeit-install.log & pid=$! 2>&1 
 		progress
 		if [ "$version" == "16.04" ]; then
-			log "apt-get install -y git unzip php php-mcrypt php-curl php-mysql php-gd php-ldap php-zip php-mbstring php-xml" & pid=$!
+			sudo apt-get install -y git unzip php php-mcrypt php-curl php-mysql php-gd php-ldap php-zip php-mbstring php-xml >> /var/log/snipeit-install.log & pid=$! 2>&1
 			progress
-			log "phpenmod mcrypt"
-			log "phpenmod mbstring"
-			log "a2enmod rewrite"
+			sudo phpenmod mcrypt >> /var/log/snipeit-install.log 2>&1
+			sudo phpenmod mbstring >> /var/log/snipeit-install 2>&1
+			sudo a2enmod rewrite >> /var/log/snipeit-install.log 2>&1
 		else
-			log "apt-get install -y git unzip php5 php5-mcrypt php5-curl php5-mysql php5-gd php5-ldap" & pid=$!
+			sudo apt-get install -y git unzip php5 php5-mcrypt php5-curl php5-mysql php5-gd php5-ldap >> /var/log/snipeit-install.log & pid=$! 2>&1
 			progress
 			log "php5enmod mcrypt"
 			log "a2enmod rewrite"
@@ -299,8 +293,8 @@ case $distro in
 		chown -R www-data:www-data "/var/www/$name"
 		service apache2 restart
 		;;
-	centos)
-	if [ "$version" == "6" ]; then
+	centos )
+	if [[ "$version" =~ ^6 ]]; then
 		#####################################  Install for Centos/Redhat 6  ##############################################
 
 		webdir=/var/www/html
@@ -308,15 +302,13 @@ case $distro in
 		echo ""
 		echo "##  Adding IUS, epel-release and mariaDB repos.";
 		mariadbRepo=/etc/yum.repos.d/MariaDB.repo
-		touch "$mariadbRepo"
-		{
-			echo "[mariadb]"
-			echo "name = MariaDB"
-			echo "baseurl = http://yum.mariadb.org/10.0/centos6-amd64"
-			echo "gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB"
-			echo "gpgcheck=1"
-			echo "enable=1"
-		} >> "$mariadbRepo"
+		touch $mariadbRepo
+		echo >> $mariadbRepo "[mariadb]"
+		echo >> $mariadbRepo "name = MariaDB"
+		echo >> $mariadbRepo "baseurl = http://yum.mariadb.org/10.0/centos6-amd64"
+		echo >> $mariadbRepo "gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB"
+		echo >> $mariadbRepo "gpgcheck=1"
+		echo >> $mariadbRepo "enable=1"
 
 		log "yum -y install wget epel-release"
 		log "wget -P "$tmp/" https://centos6.iuscommunity.org/ius-release.rpm"
@@ -419,7 +411,7 @@ case $distro in
 
 	       service httpd restart
 
-	elif [ "$version" == "7" ]; then
+	elif [[ "$version" =~ ^7 ]]; then
 		#####################################  Install for Centos/Redhat 7  ##############################################
 
 		webdir=/var/www/html
