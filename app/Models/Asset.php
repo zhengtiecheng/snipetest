@@ -79,6 +79,7 @@ class Asset extends Depreciable
     protected $fillable = [
         'asset_tag',
         'assigned_to',
+        'assigned_type',
         'company_id',
         'image',
         'model_id',
@@ -253,8 +254,9 @@ class Asset extends Depreciable
     public function assetLoc()
     {
         if (!empty($this->assignedType())) {
+            // dd($this->assignedType());
             if ($this->assignedType() == self::ASSET) {
-                return $this->assignedTo->assetloc(); // Recurse until we have a final location
+                return $this->assignedto->assetloc(); // Recurse until we have a final location
             }
             if ($this->assignedType() == self::LOCATION) {
                 return $this->assignedTo();

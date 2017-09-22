@@ -1,11 +1,14 @@
 <?php
 use App\Importer\AccessoryImporter;
 use App\Importer\AssetImporter;
-use App\Importer\LicenseImporter;
 use App\Importer\ConsumableImporter;
+use App\Importer\LicenseImporter;
 use App\Models\Accessory;
+use App\Models\Asset;
 use App\Models\AssetModel;
 use App\Models\Category;
+use App\Models\CustomField;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
@@ -18,181 +21,209 @@ class ImporterTest extends BaseTest
     */
     protected $tester;
 
-//     public function testDefaultImportAsset()
-//     {
-//         $csv = <<<'EOT'
-// Name,Email,Username,item Name,Category,Model name,Manufacturer,Model Number,Serial number,Asset Tag,Location,Notes,Purchase Date,Purchase Cost,Company,Status,Warranty,Supplier
-// Bonnie Nelson,bnelson0@cdbaby.com,bnelson0,eget nunc donec quis,quam,massa id,Linkbridge,6377018600094472,27aa8378-b0f4-4289-84a4-405da95c6147,970882174-8,Daping,"Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",2016-04-05,133289.59,Alpha,Undeployable,14,Blogspan
-// EOT;
-//         $this->import(new AssetImporter($csv));
-//         // Did we create a user?
+    public function testDefaultImportAssetWithCustomFields()
+    {
+        $csv = <<<'EOT'
+Name,Email,Username,item Name,Category,Model name,Manufacturer,Model Number,Serial number,Asset Tag,Location,Notes,Purchase Date,Purchase Cost,Company,Status,Warranty,Supplier,Weight
+Bonnie Nelson,bnelson0@cdbaby.com,bnelson0,eget nunc donec quis,quam,massa id,Linkbridge,6377018600094472,27aa8378-b0f4-4289-84a4-405da95c6147,970882174-8,Daping,"Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",2016-04-05,133289.59,Alpha,Undeployable,14,Blogspan,35
+EOT;
 
-//         $this->tester->seeRecord('users', [
-//             'first_name' => 'Bonnie',
-//             'last_name' => 'Nelson',
-//             'email' => 'bnelson0@cdbaby.com',
-//         ]);
-//         $this->tester->seeRecord('categories', [
-//             'name' => 'quam'
-//         ]);
+        $this->initializeCustomFields();
+        $this->import(new AssetImporter($csv));
 
-//         $this->tester->seeRecord('models', [
-//             'name' => 'massa id',
-//             'model_number' => 6377018600094472
-//         ]);
+        $this->tester->seeRecord('users', [
+            'first_name' => 'Bonnie',
+            'last_name' => 'Nelson',
+            'email' => 'bnelson0@cdbaby.com',
+        ]);
+        $this->tester->seeRecord('categories', [
+            'name' => 'quam'
+        ]);
 
-//         $this->tester->seeRecord('manufacturers', [
-//             'name' => 'Linkbridge'
-//         ]);
+        $this->tester->seeRecord('models', [
+            'name' => 'massa id',
+            'model_number' => 6377018600094472
+        ]);
 
-//         $this->tester->seeRecord('locations', [
-//             'name' => 'Daping'
-//         ]);
+        $this->tester->seeRecord('manufacturers', [
+            'name' => 'Linkbridge'
+        ]);
 
-//         $this->tester->seeRecord('companies', [
-//             'name' => 'Alpha'
-//         ]);
+        $this->tester->seeRecord('locations', [
+            'name' => 'Daping'
+        ]);
 
-//         $this->tester->seeRecord('status_labels', [
-//             'name' => 'Undeployable'
-//         ]);
+        $this->tester->seeRecord('companies', [
+            'name' => 'Alpha'
+        ]);
 
-//         $this->tester->seeRecord('suppliers', [
-//             'name' => 'Blogspan'
-//         ]);
-//         $this->tester->seeRecord('assets', [
-//             'name' => 'eget nunc donec quis',
-//             'serial' => '27aa8378-b0f4-4289-84a4-405da95c6147',
-//             'asset_tag' => '970882174-8',
-//             'notes' => "Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",
-//             'purchase_date' => '2016-04-05 00:00:01',
-//             'purchase_cost' => 133289.59,
-//             'warranty_months' => 14
-//             ]);
-//     }
+        $this->tester->seeRecord('status_labels', [
+            'name' => 'Undeployable'
+        ]);
 
-//     public function testUpdateAsset()
-//     {
-//         $csv = <<<'EOT'
-// Name,Email,Username,item Name,Category,Model name,Manufacturer,Model Number,Serial number,Asset Tag,Location,Notes,Purchase Date,Purchase Cost,Company,Status,Warranty,Supplier
-// Bonnie Nelson,bnelson0@cdbaby.com,bnelson0,eget nunc donec quis,quam,massa id,Linkbridge,6377018600094472,27aa8378-b0f4-4289-84a4-405da95c6147,970882174-8,Daping,"Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",2016-04-05,133289.59,Alpha,Undeployable,14,Blogspan
-// EOT;
-//         $this->import(new AssetImporter($csv));
-//         $updatedCSV = <<<'EOT'
-// item Name,Category,Model name,Manufacturer,Model Number,Serial number,Asset Tag,Location,Notes,Purchase Date,Purchase Cost,Company,Status,Warranty,Supplier
-// A new name,some other category,Another Model,Linkbridge 32,356,67433477,970882174-8,New Location,I have no notes,2018-04-05,25.59,Another Company,Ready To Go,18,Not Creative
-// EOT;
-//         $importer = new AssetImporter($updatedCSV);
-//         $importer->setUserId(1)
-//              ->setUpdating(true)
-//              ->setUsernameFormat('firstname.lastname')
-//              ->import();
+        $this->tester->seeRecord('suppliers', [
+            'name' => 'Blogspan'
+        ]);
+        $this->tester->seeRecord('assets', [
+            'name' => 'eget nunc donec quis',
+            'serial' => '27aa8378-b0f4-4289-84a4-405da95c6147',
+            'asset_tag' => '970882174-8',
+            'notes' => "Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",
+            'purchase_date' => '2016-04-05 00:00:01',
+            'purchase_cost' => 133289.59,
+            'warranty_months' => 14,
+            '_snipeit_weight_2' => 35
+            ]);
+    }
 
-//         $this->tester->seeRecord('categories', [
-//             'name' => 'some other category'
-//         ]);
+    public function testUpdateAssetIncludingCustomFields()
+    {
+        $csv = <<<'EOT'
+Name,Email,Username,item Name,Category,Model name,Manufacturer,Model Number,Serial number,Asset Tag,Location,Notes,Purchase Date,Purchase Cost,Company,Status,Warranty,Supplier,weight
+Bonnie Nelson,bnelson0@cdbaby.com,bnelson0,eget nunc donec quis,quam,massa id,Linkbridge,6377018600094472,27aa8378-b0f4-4289-84a4-405da95c6147,970882174-8,Daping,"Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",2016-04-05,133289.59,Alpha,Undeployable,14,Blogspan,95
+EOT;
 
-//         $this->tester->seeRecord('models', [
-//             'name' => 'Another Model',
-//             'model_number' => 356
-//         ]);
+        $this->initializeCustomFields();
+        $this->import(new AssetImporter($csv));
+        $updatedCSV = <<<'EOT'
+item Name,Category,Model name,Manufacturer,Model Number,Serial number,Asset Tag,Location,Notes,Purchase Date,Purchase Cost,Company,Status,Warranty,Supplier
+A new name,some other category,Another Model,Linkbridge 32,356,67433477,970882174-8,New Location,I have no notes,2018-04-05,25.59,Another Company,Ready To Go,18,Not Creative
+EOT;
+        $importer = new AssetImporter($updatedCSV);
+        $importer->setUserId(1)
+             ->setUpdating(true)
+             ->setUsernameFormat('firstname.lastname')
+             ->import();
 
-//         $this->tester->seeRecord('manufacturers', [
-//             'name' => 'Linkbridge 32'
-//         ]);
+        $this->tester->seeRecord('categories', [
+            'name' => 'some other category'
+        ]);
 
-//         $this->tester->seeRecord('locations', [
-//             'name' => 'New Location'
-//         ]);
+        $this->tester->seeRecord('models', [
+            'name' => 'Another Model',
+            'model_number' => 356
+        ]);
 
-//         $this->tester->seeRecord('companies', [
-//             'name' => 'Another Company'
-//         ]);
+        $this->tester->seeRecord('manufacturers', [
+            'name' => 'Linkbridge 32'
+        ]);
 
-//         $this->tester->seeRecord('status_labels', [
-//             'name' => 'Ready To Go'
-//         ]);
+        $this->tester->seeRecord('locations', [
+            'name' => 'New Location'
+        ]);
 
-//         $this->tester->seeRecord('suppliers', [
-//             'name' => 'Not Creative'
-//         ]);
+        $this->tester->seeRecord('companies', [
+            'name' => 'Another Company'
+        ]);
 
-//         $this->tester->seeRecord('assets', [
-//             'name' => 'A new name',
-//             'serial' => '67433477',
-//             'asset_tag' => '970882174-8',
-//             'notes' => "I have no notes",
-//             'purchase_date' => '2018-04-05 00:00:01',
-//             'purchase_cost' => 25.59,
-//             'warranty_months' => 18
-//             ]);
-//     }
+        $this->tester->seeRecord('status_labels', [
+            'name' => 'Ready To Go'
+        ]);
 
-//     public function testCustomMappingImport()
-//     {
-//         $csv = <<<'EOT'
-// Name,Email,Username,object name,Cat,Model name,Manufacturer,Model Number,Serial number,Asset,Loc,Some Notes,Purchase Date,Purchase Cost,comp,Status,Warranty,Supplier
-// Bonnie Nelson,bnelson0@cdbaby.com,bnelson0,eget nunc donec quis,quam,massa id,Linkbridge,6377018600094472,27aa8378-b0f4-4289-84a4-405da95c6147,970882174-8,Daping,"Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",2016-04-05,133289.59,Alpha,Undeployable,14,Blogspan
-// EOT;
+        $this->tester->seeRecord('suppliers', [
+            'name' => 'Not Creative'
+        ]);
 
-//         $customFieldMap = [
-//             'asset_tag' => 'Asset',
-//             'category' => 'Cat',
-//             'company' => 'comp',
-//             'item_name' => 'object name',
-//             'expiration_date' => 'expiration date',
-//             'location' => 'loc',
-//             'notes' => 'Some Notes',
-//             'asset_model' => "model name",
-//         ];
+        $this->tester->seeRecord('assets', [
+            'name' => 'A new name',
+            'serial' => '67433477',
+            'asset_tag' => '970882174-8',
+            'notes' => "I have no notes",
+            'purchase_date' => '2018-04-05 00:00:01',
+            'purchase_cost' => 25.59,
+            'warranty_months' => 18,
+            '_snipeit_weight_2' => 95
+        ]);
+    }
 
-//         $this->import(new AssetImporter($csv), $customFieldMap);
-//         // Did we create a user?
+    public function initializeCustomFields()
+    {
+            $customField = factory(App\Models\CustomField::class)->create(['name' => 'Weight']);
+            $customFieldSet = factory(App\Models\CustomFieldset::class)->create(['name' => 'Default']);
+            $customFieldSet->fields()->attach($customField, [
+                'required' => false,
+                'order' => 'asc']);
 
-//         $this->tester->seeRecord('users', [
-//             'first_name' => 'Bonnie',
-//             'last_name' => 'Nelson',
-//             'email' => 'bnelson0@cdbaby.com',
-//         ]);
+            $am = factory(App\Models\AssetModel::class)->create([
+                'name' => 'massa id',
+                'fieldset_id' => $customFieldSet->id
+            ]);
+    }
 
-//         $this->tester->seeRecord('categories', [
-//             'name' => 'quam'
-//         ]);
+    public function testCustomMappingImport()
+    {
+        $csv = <<<'EOT'
+Name,Email,Username,object name,Cat,Model name,Manufacturer,Model Number,Serial number,Asset,Loc,Some Notes,Purchase Date,Purchase Cost,comp,Status,Warranty,Supplier
+Bonnie Nelson,bnelson0@cdbaby.com,bnelson0,eget nunc donec quis,quam,massa id,Linkbridge,6377018600094472,27aa8378-b0f4-4289-84a4-405da95c6147,970882174-8,Daping,"Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",2016-04-05,133289.59,Alpha,Undeployable,14,Blogspan
+EOT;
 
-//         $this->tester->seeRecord('models', [
-//             'name' => 'massa id',
-//             'model_number' => 6377018600094472
-//         ]);
+        $customFieldMap = [
+            'asset_tag' => 'Asset',
+            'category' => 'Cat',
+            'company' => 'comp',
+            'item_name' => 'object name',
+            'expiration_date' => 'expiration date',
+            'location' => 'loc',
+            'notes' => 'Some Notes',
+            'asset_model' => "model name",
+        ];
 
-//         $this->tester->seeRecord('manufacturers', [
-//             'name' => 'Linkbridge'
-//         ]);
+        $this->import(new AssetImporter($csv), $customFieldMap);
+        // Did we create a user?
 
-//         $this->tester->seeRecord('locations', [
-//             'name' => 'Daping'
-//         ]);
+        $this->tester->seeRecord('users', [
+            'first_name' => 'Bonnie',
+            'last_name' => 'Nelson',
+            'email' => 'bnelson0@cdbaby.com',
+        ]);
+        // Grab the user record for use in asserting assigned_to
+        $createdUser = $this->tester->grabRecord('users', [
+            'first_name' => 'Bonnie',
+            'last_name' => 'Nelson',
+            'email' => 'bnelson0@cdbaby.com',
+        ]);
 
-//         $this->tester->seeRecord('companies', [
-//             'name' => 'Alpha'
-//         ]);
+        $this->tester->seeRecord('categories', [
+            'name' => 'quam'
+        ]);
 
-//         $this->tester->seeRecord('status_labels', [
-//             'name' => 'Undeployable'
-//         ]);
+        $this->tester->seeRecord('models', [
+            'name' => 'massa id',
+            'model_number' => 6377018600094472
+        ]);
 
-//         $this->tester->seeRecord('suppliers', [
-//             'name' => 'Blogspan'
-//         ]);
-//         $this->tester->seeRecord('assets', [
-//             'name' => 'eget nunc donec quis',
-//             'serial' => '27aa8378-b0f4-4289-84a4-405da95c6147',
-//             'asset_tag' => '970882174-8',
-//             'notes' => "Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",
-//             'purchase_date' => '2016-04-05 00:00:01',
-//             'purchase_cost' => 133289.59,
-//             'warranty_months' => 14
-//             ]);
-//     }
+        $this->tester->seeRecord('manufacturers', [
+            'name' => 'Linkbridge'
+        ]);
+
+        $this->tester->seeRecord('locations', [
+            'name' => 'Daping'
+        ]);
+
+        $this->tester->seeRecord('companies', [
+            'name' => 'Alpha'
+        ]);
+
+        $this->tester->seeRecord('status_labels', [
+            'name' => 'Undeployable'
+        ]);
+
+        $this->tester->seeRecord('suppliers', [
+            'name' => 'Blogspan'
+        ]);
+
+        $this->tester->seeRecord('assets', [
+            'name' => 'eget nunc donec quis',
+            'serial' => '27aa8378-b0f4-4289-84a4-405da95c6147',
+            'asset_tag' => '970882174-8',
+            'notes' => "Curabitur in libero ut massa volutpat convallis. Morbi odio odio, elementum eu, interdum eu, tincidunt in, leo. Maecenas pulvinar lobortis est.",
+            'purchase_date' => '2016-04-05 00:00:01',
+            'purchase_cost' => 133289.59,
+            'warranty_months' => 14,
+            'assigned_to' => $createdUser['id'],
+            'assigned_type' => User::class
+        ]);
+    }
 
     public function testDefaultAccessoryImport()
     {
@@ -220,7 +251,6 @@ EOT;
         $this->tester->seeRecord('categories', [
             'name' => 'Customers'
         ]);
-
     }
 
     public function testDefaultAccessoryUpdate()
@@ -292,7 +322,6 @@ EOT;
         $this->tester->seeRecord('categories', [
             'name' => 'Customers'
         ]);
-
     }
 
     public function testDefaultConsumableImport()
@@ -323,7 +352,6 @@ EOT;
         $this->tester->seeRecord('categories', [
             'name' => 'Triamterene/Hydrochlorothiazide'
         ]);
-
     }
 
     public function testDefaultConsumableUpdate()
@@ -396,7 +424,6 @@ EOT;
         $this->tester->seeRecord('categories', [
             'name' => 'Triamterene/Hydrochlorothiazide'
         ]);
-
     }
 
     public function testDefaultLicenseImport()
@@ -437,7 +464,6 @@ EOT;
         ]);
 
         $this->tester->seeNumRecords(80, 'license_seats');
-
     }
 
     public function testDefaultLicenseUpdate()
@@ -538,7 +564,6 @@ EOT;
         ]);
 
         $this->tester->seeNumRecords(80, 'license_seats');
-
     }
 
     private function import($importer, $mappings = null)
@@ -546,8 +571,6 @@ EOT;
         if ($mappings) {
             $importer->setFieldMappings($mappings);
         }
-        dd($this);
-        
         $importer->setUserId(1)
              ->setUpdating(false)
              ->setUsernameFormat('firstname.lastname')
